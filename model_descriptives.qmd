@@ -1,0 +1,746 @@
+---
+title: "Exposure Descriptives"
+author: "Daniela Gonzalez"
+format: pdf
+editor: visual
+---
+
+### Preparing environment
+
+Loading needed libraries
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(writexl)
+library (e1071)
+```
+
+```{r}
+#| label: Loading working directory and needed files
+
+#setwd("C:/Users/Daniela/OneDrive/Documentos/UvT/Second year/Thesis/Data bases")
+
+#
+
+source ("code_FULL_panel.R")
+```
+
+# Model Descriptives
+
+## Variables of interest: SES, Neighborhood Insecurity and SDQ-Cas Total Difficulties
+
+#### SES frequency table
+
+```{r}
+ses <-  bind_rows(
+  full_panel %>%
+    transmute(
+      Wave = "2010",
+      SES = estrato_2010
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2013",
+      SES = estrato_2013
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2016",
+      SES = estrato_2016
+    )
+)
+
+ses_data_freq <- ses %>%
+  group_by(Wave, SES) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  group_by(Wave) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+
+ses_data_freq
+```
+
+#### SES distribution graph
+
+```{r}
+ggplot(ses_data_freq, aes(x = SES, y = n, fill = SES)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ Wave) +
+  labs(
+    title = "Socioeconomic stratum distribution",
+    x = "Socioeconomic stratum",
+    y = "N"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"))
+```
+
+#### Insecurity frequency table
+
+```{r}
+insecurity <-  bind_rows(
+  full_panel %>%
+    transmute(
+      Wave = "2010",
+      Insecurity = tot_insec_2010
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2013",
+      Insecurity = tot_insec_2013
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2016",
+      Insecurity = tot_insec_2016
+    )
+)
+
+insecurity_data_freq <- insecurity %>%
+  group_by(Wave, Insecurity) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  group_by(Wave) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+
+insecurity_data_freq
+```
+
+#### Insecurity distribution graph
+
+```{r}
+ggplot(insecurity_data_freq, aes(x = Insecurity, y = n, fill = Insecurity)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ Wave) +
+  labs(
+    title = "Insecurity distribution across waves",
+    x = "Insecurity",
+    y = "N"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"))
+```
+
+#### SES 2010 x Insecurity across waves
+
+```{r}
+ses.insecurity <-  bind_rows(
+  full_panel %>%
+    transmute(
+      Wave = "2010",
+      SES_2010 = estrato_2010,
+      Insecurity = tot_insec_2010
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2013",
+      SES_2010 = estrato_2010,
+      Insecurity = tot_insec_2013
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2016",
+      SES_2010 = estrato_2010,
+      Insecurity = tot_insec_2016
+    )
+)
+
+ses.insecurity_data_freq <- ses.insecurity %>%
+  group_by(Wave, SES_2010, Insecurity) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  group_by(Wave) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+
+ses.insecurity_data_freq
+```
+
+#### graph for SES 2010 x insecurity across waves
+
+```{r}
+ggplot(ses.insecurity_data_freq, aes(x = SES_2010, y = n, fill = Insecurity)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ Wave) +
+  labs(
+    title = "Insecurity distribution across waves",
+    x = "SES 2010",
+    y = "N"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"))
+```
+
+#### Descriptives for SDQ-Cas
+
+```{r}
+SDQ_desc <- panel_2016 %>%
+  mutate (Total_SDQ = tot_dificultades) %>%
+  summarise(
+    n = n(),
+    Mean = round(mean (Total_SDQ, na.rm = TRUE), 2), 
+    SD = round(sd (Total_SDQ, na.rm = TRUE), 2),
+    .groups = "drop"
+  ) %>%
+  ungroup()
+
+SDQ_desc
+```
+
+#### Graph for SDQ-Cas difficulties
+
+```{r}
+SDQ.cas_hist <- hist (panel_2016$tot_dificultades)
+
+
+summary (panel_2016$tot_dificultades)
+```
+
+#### Descriptives for SES 2010 X SDQ-Cas
+
+```{r}
+ses.SDQ <- full_panel %>%
+  mutate(
+      SES_2010 = estrato_2010,
+      Total_SDQ = tot_dificultades_2016
+    )
+
+ses.SDQ_desc <- ses.SDQ %>%
+  group_by(SES_2010) %>%
+  summarise(
+    n = n(),
+    Mean = round(mean (Total_SDQ, na.rm = TRUE),2), 
+    SD = round(sd (Total_SDQ, na.rm = TRUE),2),
+    Min = min(Total_SDQ),
+    Max = max (Total_SDQ),
+    .groups = "drop"
+  ) %>%
+  ungroup()
+
+ses.SDQ_desc
+```
+
+```{r}
+
+
+ses.SDQ %>% 
+  group_by(SES_2010) %>%
+  summarise(
+    n = n(),
+    n_above_17 = sum(Total_SDQ > 17, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  mutate (
+    Percentage = round((n_above_17/n),2))
+
+```
+
+#### graphs for descriptives SES_2010 x Total_SDQ
+
+```{r}
+
+?hist
+
+hist_w <- ggplot(fulldata, aes(x = W, fill = ..count..)) +
+  geom_histogram(bins = 50, color = "black", alpha = 0.9) +
+  scale_fill_viridis_c(option = "C", direction = -1) +
+  labs(title = "Histogram of IPW Weights", x = "IPW Weight", y = "Frequency") +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "none") +
+  facet_wrap(~X1)
+
+
+ses.SDQ %>% ggplot (aes(x=tot_dificultades_2016)) +
+  geom_histogram(bins = 50, color = "black", alpha = 0.9) +
+  scale_fill_viridis_c(option = "C", direction = -1) +
+  labs(title = "Histogram of SDQ-Scoring", x = "SDQ-Score by socioeconomic stratum", y = "Frequency") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  facet_wrap(~SES_2010)
+  
+                      
+```
+
+#### 
+
+```{r}
+ggplot(ses.SDQ, aes(x = SES_2010, y = Total_SDQ, fill = SES_2010)) +
+  geom_violin(alpha = 0.7, outlier.alpha = 0.3) +
+  geom_point(position = position_jitter(width = 0.3, seed = 1), alpha = 0.1)+
+  labs(
+    title = "Distribution of SDQ Difficulties Score by socioeconomic stratum",
+    x = "Socioeconomic stratum",
+    y = "SDQ_Total"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+#### Descriptives for insecurity x SDQ-CAS score
+
+```{r}
+SDQ.insecurity <-  bind_rows(
+  full_panel %>%
+    transmute(
+      Wave = "2010",
+      Insecurity = tot_insec_2010, 
+      Total_SDQ = tot_dificultades_2016
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2013",
+      Insecurity = tot_insec_2013, 
+      Total_SDQ = tot_dificultades_2016
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2016",
+      Insecurity = tot_insec_2016, 
+      Total_SDQ = tot_dificultades_2016
+    )
+)
+
+
+SDQ.insecurity_desc <- SDQ.insecurity%>%
+  group_by(Wave, Insecurity) %>%
+  summarise(
+    n = n(),
+    Mean = round(mean (Total_SDQ, na.rm = TRUE),2), 
+    SD = round(sd (Total_SDQ, na.rm = TRUE),2),
+    .groups = "drop"
+  ) %>%
+  group_by(Wave) %>%
+  ungroup()
+
+SDQ.insecurity_desc
+```
+
+```{r}
+ggplot(SDQ.insecurity, aes(x = Insecurity, y = Total_SDQ, fill = Insecurity)) +
+  geom_violin(alpha = 0.7, outlier.alpha = 0.3)  +
+  geom_point(position = position_jitter(width = 0.3, seed = 1), alpha = 0.1) +
+  labs(
+    title = "Distribution of SDQ Difficulties Score by Perceived Neighborhood Insecurity",
+    x = "Insecurity",
+    y = "SDQ_Total"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  ) +
+  facet_wrap(~Wave)
+```
+
+#### Descriptives for socioeconomic stratum 2010 x neighborhood violence x SDQ-Cas total difficulties
+
+```{r}
+model_data <-  bind_rows(
+  full_panel %>%
+    transmute(
+      SES = estrato_2010,
+      Insecurity = tot_insec_2010, 
+      Wave = "2010",
+      Total_SDQ = tot_dificultades_2016
+    ),
+  full_panel %>%
+    transmute(
+      SES = estrato_2010, 
+      Insecurity = tot_insec_2013, 
+      Wave = "2013",
+      Total_SDQ = tot_dificultades_2016
+    ),
+  full_panel %>%
+    transmute(
+      SES = estrato_2010, 
+      Insecurity = tot_insec_2016, 
+      Wave = "2016",
+      Total_SDQ = tot_dificultades_2016
+    )
+)
+
+
+model_data_freq <- model_data %>%
+  group_by(SES, Wave, Insecurity) %>%
+  summarise(
+    N = n(),
+    Mean = round(mean (Total_SDQ, na.rm = TRUE),2), 
+    SD = round(sd (Total_SDQ, na.rm = TRUE),2),
+    Min= min(Total_SDQ), 
+    Max = max(Total_SDQ), 
+    .groups = "drop"
+  ) %>%
+  group_by(SES) %>%
+  ungroup()
+
+model_data_freq
+
+write.csv(model_data_freq, "data_freq.csv")
+
+```
+
+#### graph for socioeconomic stratum 2010 x neighborhood violence x SDQ-Cas total difficulties
+
+```{r}
+ggplot(model_data, aes(x = SES, y = Total_SDQ, fill = Insecurity)) +
+  geom_violin(alpha = 0.7, outlier.alpha = 0.3) +
+  labs(
+    title = "Distribution of SDQ Difficulties Score by socioeconomic stratum",
+    x = "Socioeconomic stratum",
+    y = "SDQ_Total"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  ) +
+  facet_wrap(~Wave)
+```
+
+## Pure predictor and base confounders (C0) vs. Exposure
+
+List of possible baseline confounders:
+
+- Richness tertile
+
+- Whether mother lives with the child (C0 and Lt)
+
+- Whether father lives with the child (C0 and Lt)
+
+- mother's civil status (C0 and Lt)
+
+- mother's employment status (C0 and Lt)
+
+- Mother's educational attainment (C0)
+
+- Ethnicity (C0)
+
+- Age (C0)
+
+- Region (C0)
+
+- Sex (C0)
+
+#### Richness tertile vs. SES
+
+When observing the frequency tables, we can see that both measurements seem to be increasing and decreasing at similar capacities. Therefore, we can assume that SES effectively captures family level SES as well as neighborhood SES.
+
+```{r}
+
+table (full_panel$estrato_2010, full_panel$tercil_2010)
+
+table (full_panel$estrato_2010, full_panel$tercil_2013)
+
+table (full_panel$estrato_2010, full_panel$tercil_2016)
+```
+
+#### Parents living with child
+
+father
+
+```{r}
+
+table (full_panel$estrato_2010, full_panel$padre_vive_2010)
+
+table (full_panel$estrato_2010, full_panel$padre_vive_2013)
+
+table (full_panel$estrato_2010, full_panel$padre_vive_2016)
+```
+
+mother
+
+```{r}
+table (full_panel$estrato_2010, full_panel$madre_vive_2010)
+
+table (full_panel$estrato_2010, full_panel$madre_vive_2013)
+
+table (full_panel$estrato_2010, full_panel$madre_vive_2016)
+```
+
+#### mother's civil status
+
+```{r}
+table (full_panel$estrato_2010, full_panel$madre_estado_civil_2010)
+
+table (full_panel$estrato_2010, full_panel$madre_estado_civil_2013)
+
+table (full_panel$estrato_2010, full_panel$madre_estado_civil_2016)
+```
+
+#### Ethnicity
+
+```{r}
+table (full_panel$estrato_2010, full_panel$etnia)
+
+```
+
+#### Age
+
+```{r}
+
+age_stratum_data <- bind_rows(
+  full_panel %>%
+    transmute(
+      Wave = "2010",
+      SES = estrato_2010,
+      Age = edad_2010
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2013",
+      SES = estrato_2010,
+      Age = edad_2013
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2016",
+      SES = estrato_2010,
+      Age = edad_2016
+    )
+) %>%
+  filter(!is.na(SES), !is.na(Age)) %>%
+  mutate(
+    Wave = factor(Wave, levels = c("2010", "2013", "2016")),
+    SES = factor(SES)
+  )
+
+age_stratum_desc <- age_stratum_data %>%
+  group_by(Wave, SES) %>%
+  summarise(
+    n = n(),
+    Mean = mean (Age, na.rm = TRUE), 
+    SD = sd (Age, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(Wave) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+age_stratum_desc
+
+```
+
+#### Region
+
+```{r}
+region_stratum_data <-
+  full_panel %>%
+    transmute(
+      SES = estrato_2010,
+      Region = region_2010
+    )
+
+
+region_stratum_freq <- region_stratum_data %>%
+  group_by(SES, Region) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+
+region_stratum_freq
+```
+
+#### Gender
+
+##### Frequency table for sex per social stratum
+
+```{r}
+sex_strata_data <-
+  full_panel %>%
+    transmute(
+      Wave = "2010",
+      SES = estrato_2010,
+      Sex = sexo
+    )
+
+
+sex_strata_freq <- sex_strata_data %>%
+  group_by(SES, Sex) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+sex_strata_freq
+
+```
+
+##### Graph for sex per social stratum
+
+```{r}
+
+ggplot(sex_strata_freq, aes(x = SES, y = n, fill=Sex)) +
+  geom_col(position = "dodge") + 
+  labs(
+    title = "Gender distribution by socioeconomic stratum",
+    x = "Socioeconomic stratum",
+    y = "N"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"))
+```
+
+## Time varying and intermediate confounders (Lt)
+
+Variables that we assume are consequence of the exposure and base confounders and affect the mediators and outcomes.
+
+#### Number of people living in the household
+
+Frequency table for number of people living in household per stratum
+
+```{r}
+people_stratum_data <- bind_rows(
+  full_panel %>%
+    transmute(
+      Wave = "2013",
+      SES = estrato_2010,
+      N = t_personas_2013
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2016",
+      SES = estrato_2010,
+      N = t_personas_2016
+    )
+)%>%
+  filter(!is.na(SES), !is.na(N)) %>%
+  mutate(
+    Wave = factor(Wave, levels = c("2013", "2016")),
+    SES = factor(SES)
+  )
+
+people_stratum_freq <- people_stratum_data %>%
+  group_by(Wave, SES) %>%
+  summarise(
+    n = n(),
+    Mean = mean (N, na.rm = TRUE), 
+    SD = sd (N, na.rm = TRUE),
+    Min = min(N),
+    Max = max(N),
+    .groups = "drop"
+  ) %>%
+  group_by(Wave) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+people_stratum_freq
+```
+
+Graph for number of people in the household per socioeconomic stratum
+
+```{r}
+ggplot(people_stratum_data, aes(x = SES, y = N, fill = SES)) +
+  geom_boxplot(alpha = 0.7, outlier.alpha = 0.3) +
+  facet_wrap(~ Wave) +
+  labs(
+    title = "Total people in household distribution by socioeconomic stratum",
+    x = "Socioeconomic stratum",
+    y = "N"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+    )
+```
+
+#### Child's studying status
+
+```{r}
+study_stratum_data <- bind_rows(
+  full_panel %>%
+    transmute(
+      Wave = "2013",
+      SES = estrato_2010,
+      Study_status = estudia_2013
+    ),
+  full_panel %>%
+    transmute(
+      Wave = "2016",
+      SES = estrato_2010,
+      Study_status = estudia_2016
+    )
+)%>%
+  filter(!is.na(SES), !is.na(Study_status)) %>%
+  mutate(
+    Wave = factor(Wave, levels = c("2013", "2016")),
+    SES = factor(SES)
+  )
+
+study_stratum_table<- study_stratum_data %>%
+  group_by(Wave, SES, Study_status) %>%
+  summarise(
+    n = n(), 
+    .groups = "drop"
+  ) %>%
+  group_by(Wave) %>%
+  mutate(
+    Percentage = round(100 * n / sum(n), 2)
+  ) %>%
+  ungroup()
+
+study_stratum_table
+```
+
+Graph for study status
+
+```{r}
+ggplot(study_stratum_table, aes(x = SES, y = n, fill=Study_status)) +
+  geom_col(position = "dodge") + 
+  labs(
+    title = "Study status by socioeconomic stratum",
+    x = "Socioeconomic stratum",
+    y = "N"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")) +
+  facet_wrap (~Wave)
+```

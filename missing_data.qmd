@@ -1,0 +1,412 @@
+---
+title: "Missingness"
+author: "Daniela González"
+format: docx
+editor: visual
+---
+
+# Missingness panel data ELCA
+
+## Workspace preparation
+
+Loading needed packages
+
+```{r}
+
+
+library (naniar)
+library (tidyverse)
+library (dplyr)
+library (haven)
+library (magrittr)
+library (janitor)
+library (stringr)
+library (skimr)
+library (pointblank)
+library (assertthat)
+library (purrr)
+```
+
+Preparing workspace and opening up our databases database
+
+```{r}
+
+setwd("C:/Users/Daniela/OneDrive/Documentos/UvT/Second year/Thesis/Data bases")
+
+source ("code_FULL_panel.R")
+
+```
+
+Taking into account we want to assess for attrition between our databases, a variable that has no missingness within out full panel data will be chosen to be able to generate a dummy that works as a filter.
+
+```{r}
+
+
+sum(is.na (short_panel_2010$sexo))
+
+sum(is.na(partial_panel$sexo))
+
+sum(is.na (full_panel$sexo))
+```
+
+### 2010 vs. 2013
+
+Wrangling our dataset through left_join instead of inner_join to keep observations from 2010 that no longer appear in 2013, checking for duplicates and proceeding with elimination after manual examination
+
+```{r}
+identifiers_2010 <- short_panel_2010 %>%
+  select(consecutivo, llave_ID_lb,orden, sexo, etnia, estrato_2010)
+
+#changing name of sex variable to be able to identify missingness later on
+miss.short_panel_2013 <- rename (short_panel_2013, 
+                                 miss_2013 = sexo)
+
+data2013 <- left_join(
+  identifiers_2010,
+  miss.short_panel_2013,
+  by = c("consecutivo", "llave_ID_lb", "orden"))
+
+
+```
+
+### Dataset wrangling
+
+Wrangling our dataset through left_join instead of inner_join to keep observations from 2013 that no longer appear in 2016, checking for duplicates and proceeding with elimination after manual examination
+
+```{r}
+identifiers_2013 <- data2013 %>%
+  select(consecutivo, llave_ID_lb,orden, sexo, etnia, estrato_2010, miss_2013, estrato_2013)
+
+#changing name of sex variable to be able to identify missingness later on
+miss.short_panel_2016 <- rename (short_panel_2016, 
+                                 miss_2016 = sexo)
+
+full_data<- left_join(
+  identifiers_2013,
+  miss.short_panel_2016,
+  by = c("consecutivo", "llave_ID_lb", "orden"))
+
+
+
+
+```
+
+## Missingness analyses
+
+### Full attrition
+
+Comparing across years the amount of people lost in total.
+
+```{r}
+
+#obtaining frquency table from 2010
+attrition2010 <- full_data %>% 
+  summarise(N = sum(!is.na (sexo)), 
+    Missing = sum(is.na (sexo))) %>%
+  mutate(
+    "% Missing Data" = round(100 * Missing / sum(c(N,Missing)), 2)) %>% 
+  mutate(
+    Year = "2010",
+    .before = 1
+  )
+
+#obtaining frequency table from 2013
+attrition2013 <- full_data %>% 
+  summarise(
+    N = sum(!is.na (miss_2013)), 
+    Missing = sum(is.na (miss_2013))) %>%
+  mutate(
+    "% Missing Data" = round(100 * Missing / sum(c(N,Missing)), 2)) %>% 
+  mutate(
+    Year = "2013",
+    .before = 1
+  )
+
+#obtaining frequency table from 2016
+attrition2016 <- full_data %>% 
+  summarise(
+    N = sum(!is.na (miss_2016)), 
+    Missing = sum(is.na (miss_2016))) %>%
+  mutate(
+    "% Missing Data" = round(100 * Missing / sum(c(N,Missing)), 2)) %>% 
+  mutate(
+    Year = "2016",
+    .before = 1
+  )
+
+
+
+#generating conjunct frequency tables
+
+#2010 vs. 2013
+attrition2010_2013 <- rbind (attrition2010, attrition2013)
+
+#Full attrition 
+full_attrition <- rbind(attrition2010_2013, attrition2016)
+full_attrition
+
+
+
+```
+
+**Total cases lost across waves: 1833**
+
+## Missingness by demographic variables
+
+To assess for patterns in the data that may be related to vulnerability factors, we will look into the missingness across the demographic variables through frequency tables and graphical aid
+
+### Sex
+
+Frequency tables
+
+```{r}
+sex.attrition2010 <- full_data %>% 
+  mutate (Sex = sexo) %>%
+  group_by(Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (sexo)), 
+    Missing = sum(is.na (sexo)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2010",
+    .before = 1
+  )
+
+sex.attrition2013 <- full_data %>% 
+  mutate (Sex = sexo) %>%
+  group_by(Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (miss_2013)), 
+    Missing = sum(is.na (miss_2013)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2013",
+    .before = 1
+  )
+
+
+
+sex.attrition2016 <- full_data %>% 
+  mutate (Sex = sexo) %>%
+  group_by(Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (miss_2016)), 
+    Missing = sum(is.na (miss_2016)),
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2016",
+    .before = 1
+  )
+
+
+
+sex.attrition2010_2013 <- rbind (sex.attrition2010, sex.attrition2013)
+full.sex.attrition <- rbind (sex.attrition2010_2013, sex.attrition2016)
+full.sex.attrition
+```
+
+#### Graph
+
+```{r}
+
+full.sex.attrition.long <- full.sex.attrition %>%
+  pivot_longer(
+    cols = c(Observed, Missing),
+    names_to = "Data",
+    values_to = "N"
+  )
+
+ggplot(full.sex.attrition.long, aes(x = Sex, y = N, fill=Data)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ Year) +
+  labs(
+    title = "Missingness distribution by sex",
+    x = "Sex",
+    y = "N",
+    fill="Data"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"))
+```
+
+### Ethnicity
+
+#### 2010
+
+```{r}
+ethn.attrition2010 <- full_data %>% 
+  mutate (Ethnicity = etnia, 
+          Sex = sexo) %>% 
+  group_by(Ethnicity, Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (sexo)), 
+    Missing = sum(is.na (sexo)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2010",
+    .before = 1
+  )
+
+ethn.attrition2013 <- full_data %>% 
+ mutate (Ethnicity = etnia, 
+          Sex = sexo) %>% 
+  group_by(Ethnicity, Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (miss_2013)), 
+    Missing = sum(is.na (miss_2013)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2013",
+    .before = 1
+  )
+
+ethn.attrition2016 <- full_data %>% 
+  mutate (Ethnicity = etnia, 
+          Sex = sexo) %>% 
+  group_by(Ethnicity, Sex) %>%  
+  summarise(
+    Observed = sum(!is.na (miss_2016)), 
+    Missing = sum(is.na (miss_2016)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2016",
+    .before = 1
+  )
+
+ethn.attrition2010_2013 <- rbind (ethn.attrition2010, ethn.attrition2013)
+full.ethn.attrition <- rbind (ethn.attrition2010_2013, ethn.attrition2016)
+full.ethn.attrition
+```
+
+#### Graph
+
+```{r}
+full.ethn.attrition.long <- full.ethn.attrition %>%
+  pivot_longer(
+    cols = c(Observed, Missing),
+    names_to = "Data",
+    values_to = "N"
+  )
+
+ggplot(full.ethn.attrition.long, aes(x = Ethnicity, y = N, fill=Data)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ Year) +
+  labs(
+    title = "Missingness distribution by Ethnicity",
+    x = "Ethnicity",
+    y = "N",
+    fill="Data"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"))
+```
+
+### Socioeconomic Stratum
+
+#### 2010
+
+```{r}
+#SES and gender
+ses.attrition2010 <- full_data %>% 
+  mutate (SES = estrato_2010, 
+          Sex = sexo) %>%
+  group_by(SES, Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (sexo)), 
+    Missing = sum(is.na (sexo)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2010",
+    .before = 1
+  )
+
+ses.attrition2013 <- full_data %>% 
+  mutate (SES = estrato_2010, 
+          Sex = sexo) %>%
+  group_by(SES, Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (miss_2013)), 
+    Missing = sum(is.na (miss_2013)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2013",
+    .before = 1
+  )
+
+ses.attrition2016 <- full_data %>% 
+   mutate (SES = estrato_2010, 
+          Sex = sexo) %>%
+  group_by(SES, Sex) %>% 
+  summarise(
+    Observed = sum(!is.na (miss_2016)), 
+    Missing = sum(is.na (miss_2016)), 
+    Total = n()) %>%
+  mutate(
+    "% Missing Within" = round(100 * Missing / Total, 2), 
+    "% Missing Between" = round(100 * Missing / sum(c(Observed,Missing)), 2)) %>% 
+  mutate(
+    Year = "2016",
+    .before = 1
+  )
+
+ses.attrition2010_2013 <- rbind (ses.attrition2010, ses.attrition2013)
+full.ses.attrition <- rbind (ses.attrition2010_2013, ses.attrition2016)
+full.ses.attrition
+
+write.csv(full.ses.attrition, "full_ses_attrition.csv")
+```
+
+#### Graph
+
+```{r}
+full.ses.attrition.long <- full.ses.attrition %>%
+  pivot_longer(
+    cols = c(Observed, Missing),
+    names_to = "Data",
+    values_to = "N"
+  )
+
+ggplot(full.ses.attrition.long, aes(x = SES, y = N, fill=Data)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ Year) +
+  labs(
+    title = "Missingness distribution by SES",
+    x = "SES",
+    y = "N",
+    fill="Data"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold"))
+
+
+```

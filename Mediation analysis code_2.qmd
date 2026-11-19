@@ -1,0 +1,639 @@
+---
+title: "Code mediation analysis"
+author: "Daniela"
+format: docx
+editor: visual
+---
+
+# Mediation analysis
+
+```{r}
+#| label: Libraries 
+library ("medflex")
+library (dplyr)
+library (tidyverse)
+library (VGAM)
+library (geepack)
+library ("gridExtra")
+library ("cobalt")
+library (broom)
+library("emmeans")
+library (geeasy)
+library (tidyfit)
+
+```
+
+```{r}
+#| label: Workspace setting
+
+#opening data
+setwd ("C:/Users/Daniela/OneDrive/Documentos/UvT/Second year/Thesis/Data bases/")
+source ("code_FULL_panel.R")
+```
+
+```{r}
+#| label: Mediation analysis 
+
+#renaming variables 
+
+data <- full_panel %>%
+  mutate(
+    L01 = padre_vive_2010,
+    L02 = madre_vive_2010,
+    L03 = madre_estado_civil_2010, 
+    L04 = madre_ocupacion_2010,
+    L05 = madre_nivel_educ_2010,
+    L06 = etnia, 
+    L07 = region_2010,
+    L11 = padre_vive_2013,
+    L12 = madre_vive_2013,
+    L13 = madre_estado_civil_2013,
+    L14 = madre_ocupacion_2013,
+    L15 = estrato_2013, 
+    L16 = t_personas_2013,
+    L21 = padre_vive_2016,
+    L22 = madre_vive_2016,
+    L23 = madre_estado_civil_2016,
+    L24 = madre_ocupacion_2016, 
+    L25 = estrato_2016,
+    L26 = t_personas_2016, 
+    X1 = estrato_2010,
+    X2 = sexo, 
+    X3 = edad_2010, 
+    M1 = tot_insec_2010,
+    M2 = tot_insec_2013,
+    M3 = tot_insec_2016,
+    Y = tot_dificultades_2016
+  ) %>%
+  dplyr::select(
+    starts_with("C0"),
+    starts_with("L0"),
+    starts_with("L1"),
+    starts_with("L2"),
+    X1, X2, X3, M1, M2, M3, Y
+  ) %>% 
+  mutate (ID= row_number(), 
+          .before = 1)
+
+
+#since we will be working with complete case analysis, we will transofrm NA's into "No info" category, to avoid as much data loss as possible  
+
+vars <- c( "X2", "X3", "L01", "L02", "L03", "L04", "L05", "L06", "L07", "L11", "L12", "L13", "L14", "L15", "L16", "L21", "L22", "L23", "L24", "L25", "L26", "L27")
+
+data <- data %>%
+  mutate(
+    across(
+      where(is.factor),
+      ~ droplevels(
+        forcats::fct_na_value_to_level(.x, level = "No Info")
+      )
+    )
+  )
+
+
+
+#generating copy of observed exposure 
+data$xstar <- data$X1
+
+```
+
+### Fitting mediator weights
+
+```{r}
+#regressions on mediators 
+m1reg <- vglm (M1 ~ xstar + L01 +L02 + L03 + L04 + L05 +L06 + L07, 
+               data = data, family = multinomial)
+
+#without region
+m2reg <- vglm (M2 ~ xstar + M1 + L01 +L02 + L03 + L04 + L05 +L06 + L07 + L11 + L12  + L14 + L15 +L16, 
+               data = data, family = multinomial)
+
+
+
+#without region at t2 and t3
+m3reg <- vglm (M3 ~ xstar + M1 + M2 + L01 +L02 + L03 + L04 + L05 +L06 + L07 + L11 + L12 + L14 + L15  + L16 + L21 + L22 + L24 + L25 + L26  , 
+               data = data, family = multinomial)
+
+```
+
+#### Assesing mediator model fit
+
+We will proceed to check the accuracy of the mediator models at predicting the observed value by:
+
+1.  obtaining the estimated probabilities for all categories of Neighborhood Perceived Insecurity estimated by the models
+2.  Adding the observed value to the dataframe obtained in the previous step
+3.  Creating a long version to observe level of neighborhood insecurity x actually observed value
+4.  Identifying the probability of the observed value
+5.  Plotting of the probabilities.
+
+```{r}
+
+# Predicted probabilities
+exp.1 <- predict(m1reg, type = "response")
+
+exp.2 <- predict(m2reg, type = "response")
+
+exp.3 <- predict(m3reg, type = "response")
+
+
+df.exp.1 <- as.data.frame (exp.1)
+
+df.exp.2 <- as.data.frame (exp.2)
+
+df.exp.3 <- as.data.frame (exp.3)
+
+#adding observed value into dataframe of exp
+df.exp.1$observed <- data$M1
+
+df.exp.2$observed <- data$M2
+
+df.exp.3$observed <- data$M3
+
+
+#format long
+exp.1.long <- df.exp.1 %>%
+pivot_longer(
+  cols = c(Low, Medium, High),
+  names_to = "Category",
+  values_to = "Predicted"
+)
+
+
+exp.2.long <- df.exp.2 %>%
+pivot_longer(
+  cols = c(Low, Medium, High),
+  names_to = "Category",
+  values_to = "Predicted"
+)
+
+
+exp.3.long <- df.exp.3 %>%
+pivot_longer(
+  cols = c(Low, Medium, High),
+  names_to = "Category",
+  values_to = "Predicted"
+)
+
+#if observed =1 if not =0 
+exp.1.long <- exp.1.long %>%
+mutate(
+  Actual = ifelse(observed == Category, 1, 0)
+)
+
+exp.2.long <- exp.2.long %>%
+mutate(
+  Actual = ifelse(observed == Category, 1, 0)
+)
+
+exp.3.long <- exp.3.long %>%
+mutate(
+  Actual = ifelse(observed == Category, 1, 0)
+)
+
+
+
+
+```
+
+```{r}
+# Calibration plots
+
+ggplot(exp.1.long,
+     aes(x = Predicted, y = Actual)) +
+geom_smooth(
+  method = "loess",
+  se = FALSE,
+  color = "blue",
+  span = 0.75
+) +
+geom_abline(
+  intercept = 0,
+  slope = 1,
+  linetype = "dashed",
+  color = "red"
+) +
+facet_wrap(~ Category) +
+coord_cartesian(
+  xlim = c(0, 1),
+  ylim = c(0, 1)
+) +
+labs(
+  title = "Calibration Plot - M1",
+  x = "Predicted probability",
+  y = "Observed proportion"
+) +
+theme_minimal()
+
+
+ggplot(exp.2.long,
+     aes(x = Predicted, y = Actual)) +
+geom_smooth(
+  method = "loess",
+  se = FALSE,
+  color = "blue",
+  span = 0.75
+) +
+geom_abline(
+  intercept = 0,
+  slope = 1,
+  linetype = "dashed",
+  color = "red"
+) +
+facet_wrap(~ Category) +
+coord_cartesian(
+  xlim = c(0, 1),
+  ylim = c(0, 1)
+) +
+labs(
+  title = "Calibration Plot - M2",
+  x = "Predicted probability",
+  y = "Observed proportion"
+) +
+theme_minimal()
+
+
+ggplot(exp.3.long,
+     aes(x = Predicted, y = Actual)) +
+geom_smooth(
+  method = "loess",
+  se = FALSE,
+  color = "blue",
+  span = 0.75
+) +
+geom_abline(
+  intercept = 0,
+  slope = 1,
+  linetype = "dashed",
+  color = "red"
+) +
+facet_wrap(~ Category) +
+coord_cartesian(
+  xlim = c(0, 1),
+  ylim = c(0, 1)
+) +
+labs(
+  title = "Calibration Plot - M3",
+  x = "Predicted probability",
+  y = "Observed proportion"
+) +
+theme_minimal()
+```
+
+### Numeric assessment
+
+```{r}
+# Calibration summary by category
+calibration.m1.summary <- exp.1.long %>%
+  group_by(Category) %>%
+  summarise(
+    Mean_Predicted = mean(Predicted),
+    Observed_Proportion = mean(Actual),
+    N = n(),
+    .groups = "drop"
+  )
+
+calibration.m1.summary
+
+calibration.m2.summary <- exp.2.long %>%
+  group_by(Category) %>%
+  summarise(
+    Mean_Predicted = mean(Predicted),
+    Observed_Proportion = mean(Actual),
+    N = n(),
+    .groups = "drop"
+  )
+
+calibration.m2.summary
+
+calibration.m3.summary <- exp.3.long %>%
+  group_by(Category) %>%
+  summarise(
+    Mean_Predicted = mean(Predicted),
+    Observed_Proportion = mean(Actual),
+    N = n(),
+    .groups = "drop"
+  )
+
+calibration.m3.summary
+```
+
+Evaluating abnormal results for m2reg. Identifying that only one person has Pr \<0.01 in the actually observed value, therefore, not problematic.
+
+```{r}
+
+# Minimum probability for each category
+apply(exp.2, 2, min)
+
+# Number of probabilities below 0.01
+colSums(exp.2 < 0.01)
+obs.2 <- factor(obs.2, levels = colnames(exp.2))
+
+# Probability of the observed category
+p_obs.2 <- exp.2[
+  cbind(seq_along(obs.2), as.integer(obs.2))
+]
+
+# Summary
+summary(p_obs.2)
+
+# Number of observed probabilities below 0.01
+sum(p_obs.2 < 0.01)
+
+# Minimum observed probability
+min(p_obs.2)
+```
+
+#### Mediator weights
+
+```{r}
+#denominator weights 
+m1dr <- as.matrix (predict (m1reg, type="response", newdata=data)) [cbind (1:nrow(data), data$M1)]
+m2dr <- as.matrix (predict (m2reg, type="response", newdata=data)) [cbind (1:nrow(data), data$M2)]
+m3dr <- as.matrix (predict (m3reg, type="response", newdata=data)) [cbind (1:nrow(data), data$M3)]
+
+
+#numerator weights following counterfactual logic 
+dattemp <- data 
+
+dattemp <- dattemp[
+  rep(seq_len(nrow(dattemp)), each = 2),
+] %>%
+  group_by(ID) %>%
+  mutate(
+    xstar = setdiff(c("Low-low", "Low", "Medium-Low"), as.character(first(X1)))
+  ) %>%
+  ungroup()
+
+dattemp$xstar <- factor(dattemp$xstar, levels = levels(dattemp$X1))
+
+
+#regression on mediators for counterfactuals to obtain numerator 
+
+m1nr <- as.matrix (predict (m1reg, type="response", newdata=dattemp)) [cbind(1:nrow(dattemp), rep(dattemp$M1,))]
+m2nr <- as.matrix (predict (m2reg, type="response", newdata=dattemp)) [cbind(1:nrow(dattemp), rep(dattemp$M2,))]
+m3nr <- as.matrix (predict (m3reg, type="response", newdata=dattemp)) [cbind(1:nrow(dattemp), rep(dattemp$M3,))]
+
+#calculating mediator weights 
+
+dattemp$wmed1 <- m1nr / rep(m1dr, each = 2)
+dattemp$wmed2 <- m2nr / rep(m2dr, each = 2)
+dattemp$wmed3 <- m3nr / rep(m3dr, each = 2)
+
+#adding weights of 1 to original dataset since a = a*
+data <- data %>% 
+  mutate (wmed1 = 1,
+          wmed2 = 1, 
+          wmed3 = 1)
+```
+
+#### Fitting model for exposure
+
+```{r}
+#fitting exposure model to obtain weight of exposure 
+Xreg <- vglm (X1 ~ L01 +L02 + L03 + L04 + L05 +L06 + L07, data= data, family = multinomial, refLevel = "1")
+
+Xprob <- as.matrix(predict (Xreg, type = "response")) #probability of exposure value being actually observed
+
+colX_index <- match(
+  as.character(data$X1),
+  colnames(Xprob)
+)
+
+
+
+#identifying the probability of the actually observed value given covariates
+Xprob_observed <- Xprob[
+  cbind(seq_len(nrow(data)), colX_index)
+]
+
+
+#calculating the weights based on Xp_observed
+Xweight_prob <- 1/Xprob_observed
+
+
+
+#attaching weight to ID
+Xweights_data <- data %>%
+  mutate(Xweight_prob=Xweight_prob) %>%
+  dplyr::select(ID, Xweight_prob)
+
+
+
+
+#adding weight variable into original dataset
+data <- data %>% left_join(Xweights_data, by="ID")
+dattemp <- dattemp %>% left_join(Xweights_data, by="ID")
+
+
+#binding datasets 
+fulldata <- rbind (data, dattemp)
+fulldata <- fulldata[order(fulldata$ID),]
+
+#generating cumulative weight and full weight variables since we're interested in the end of study outcome
+
+fulldata <- fulldata %>%
+  mutate(
+    weight_med = wmed1*wmed2*wmed3, 
+    W = weight_med*Xweight_prob)
+```
+
+### Model fitting
+
+```{r}
+#| label: outcomes mediation
+
+fit_out1 <- geeglm(Y~X1+xstar,data=fulldata,corstr="independence",
+                   family="gaussian", weights=W,id=fulldata$ID,scale.fix=TRUE)
+
+
+#model outcome
+tidy_fit <- tidy(fit_out1, conf.int = TRUE, conf.level = 0.95)
+tidy_fit
+write.csv(tidy_fit,"outcome.csv")
+
+
+anov.fit <- anova (fit_out1)
+anov.fit
+write.csv(anov.fit,"Anova.csv")
+
+
+plotEst(fit_out1)
+
+
+
+
+```
+
+### Weight assessment
+
+```{r}
+#| label: Checking weights
+
+#graphical assessment
+#assessing weights graphically to see from where the high values come from
+
+
+#distribution of exposure weights
+hist(
+  data$Xweight_prob, #after running this we can observe that its the X weights
+  breaks = 30,
+  main = "Distribution of IPW in x",
+  xlab = "Weights"
+)
+
+
+
+
+#distribution of IPW
+hist_w <- ggplot(fulldata, aes(x = W, fill = ..count..)) +
+  geom_histogram(bins = 50, color = "black", alpha = 0.9) +
+  scale_fill_viridis_c(option = "C", direction = -1) +
+  labs(title = "Histogram of IPW Weights", x = "IPW Weight", y = "Frequency") +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "none") +
+  facet_wrap(~X1)
+
+
+
+#Boxplot of IPW Weights to visually detect outliers
+boxplot_IPWoutliers <- ggplot(fulldata, aes(x= X1, y = W, fill= X1)) +
+  geom_boxplot(color = "black", outlier.colour = "#1B4F72") +
+  labs(title = "Boxplot of IPW Weights", x= "SES", y = "IPW Weight") +
+  theme_minimal(base_size = 16)
+
+weights <- grid.arrange(hist_w, boxplot_IPWoutliers, ncol = 2)
+
+ggsave("hist_w.png", hist_w, width=20, height=10)
+ggsave("boxplot_IPWoutliers.png", boxplot_IPWoutliers, width=15, height=10)
+
+```
+
+```{r}
+#taking a further look into the weights 
+summary (fulldata$W)
+quantile(fulldata$W, probs = c(0.01, 0.05, 0.95, 0.99)) 
+
+#calculating ratio maximum:mean
+ipw_ratio <- max(fulldata$W) / mean(fulldata$W) #13.8
+ipw_ratio
+
+sum(fulldata$W > 10, na.rm = TRUE)
+sum(fulldata$W > 20, na.rm = TRUE)
+```
+
+```{r}
+#| label: checking SMD of baseline confounders on the exposure
+
+cov.bal_data <- fulldata %>%
+  distinct(ID, .keep_all = TRUE)
+
+
+cov.bal <- bal.tab(
+  X1 ~ L01 +L02 + L03 + L04 + L05 +L06 + L07,
+  data = cov.bal_data,
+  weights = "Xweight_prob",
+  un = TRUE,
+  pairwise = TRUE,
+  binary = "raw"
+)
+
+
+print(cov.bal)
+
+```
+
+## Sensitivity analysis
+
+```{r}
+abn_weights <- fulldata %>%
+  filter(Xweight_prob > 10) %>%
+  dplyr::select(
+    ID, X1, L01, L02, L03 , L04 , L05 ,L06 , L07,
+    W
+  ) %>%
+  arrange(desc(W))
+
+abn_weights
+```
+
+```{r}
+#| label: Identification of problematic cases within sample for truncation
+
+
+
+fulldata <- fulldata %>%
+  mutate(
+    W_95 = pmin(W, quantile(W, 0.95, na.rm = TRUE))
+  )
+
+
+fulldata
+
+summary (fulldata$W_95)
+```
+
+#### Refitting of model 
+
+```{r}
+#| label: Refitting model with truncated data 
+
+fit_out.w95 <- geeglm(Y~X1+xstar,data=fulldata,corstr="independence",
+                  family="gaussian", weights=W_95,id=fulldata$ID,scale.fix=TRUE)
+
+summary (fit_out.w95)
+
+tidy_fit.95 <- tidy(fit_out.w95, conf.int = TRUE, conf.level = 0.95)
+
+write.csv(tidy_fit.95,"trunc_outcome.csv")
+
+plotEst(fit_out.w95)
+
+anov.fit95 <- anova (fit_out.w95)
+write.csv(anov.fit95,"Anova_trunc.csv")
+```
+
+### Assesing weight distribution again 
+
+```{r}
+#distribution of IPW
+hist_w95 <- ggplot(fulldata, aes(x = W_95, fill = ..count..)) +
+  geom_histogram(bins = 50, color = "black", alpha = 0.9) +
+  scale_fill_viridis_c(option = "C", direction = -1) +
+  labs(title = "Histogram of IPW Weights", x = "IPW Weight", y = "Frequency") +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = "none") +
+  facet_wrap(~X1)
+
+
+
+#Boxplot of IPW Weights to visually detect outliers
+boxplot_IPW.w95 <- ggplot(fulldata, aes(x= X1, y = W_95, fill= X1)) +
+  geom_boxplot(color = "black", outlier.colour = "#1B4F72") +
+  labs(title = "Boxplot of IPW Weights", x= "SES", y = "IPW Weight") +
+  theme_minimal(base_size = 16)
+
+weights <- grid.arrange(hist_w95, boxplot_IPW.w95, ncol = 2)
+
+ggsave("hist_w95.png", hist_w95, width=20, height=10)
+ggsave("boxplot_IPW_w95.png", boxplot_IPW.w95, width=15, height=10)
+```
+
+### Assessing balance of confounders 
+
+```{r}
+cov.bal_data <- fulldata %>%
+  distinct(ID, .keep_all = TRUE)
+
+balance.w95 <- bal.tab(
+  X1 ~ L01 +L02 + L03 + L04 + L05 +L06 + L07,
+  data = cov.bal_data,
+  weights = "W_95",
+  method = "weighting",
+  pairwise = TRUE,
+  un = TRUE
+)
+?write.csv
+
+
+write.csv(w95.balance, "truncation.csv")
+```
