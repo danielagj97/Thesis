@@ -1,0 +1,198 @@
+---
+title: "README"
+author: "Daniela González-Jiménez"
+supervisor: "Lizbeth Burgos-Ochoa"
+format: html
+editor: visual
+---
+
+## **Overview**
+
+-  The code in this replication package constructs the dataset file from the panel data obtained from the three waves (2010, 2013, 2016) of the Longitudinal Survey of Colombia from Universidad de los Andes (ELCA in Spanish). These datasets are openly available in the data repository.
+
+-  All data wrangling and data analyses were carried out using R.
+
+- A master code runs the code to generate the panel data that was used for the data analysis, other R files are provided afterwards to obtain descriptives and the mediation analysis of interest. The replicator should expect the code to run for less than 10 minutes.
+
+## Data Availability and Provenance Statements
+
+Data from the ELCA survey (2023) are openly available and were downloaded from the Study Center of Economic Development from Universidad de los Andes (CEDE) data repository. **Raw datasets and corresponding dictionaries can be downloaded from the following sources. \
+*2010:***
+
+Centro de Estudios sobre Desarrollo Económico - CEDE, 2023, "Encuesta Longitudinal Colombiana ELCA 2010", <https://doi.org/10.57924/DPF0M5>, UniAndes, V1
+
+***2013:***
+
+Centro de Estudios sobre Desarrollo Económico - CEDE, 2023, "Encuesta Longitudinal Colombiana ELCA 2013", <https://doi.org/10.57924/DE9LP7>, UniAndes, V1
+
+***2016:***
+
+Centro de Estudios sobre Desarrollo Económico - CEDE, 2023, "Encuesta Longitudinal Colombiana ELCA 2016", <https://doi.org/10.57924/BLUILW>, UniAndes, V1
+
+### Description of used datasets
+
+We used four out of six of the urban datasets from the 2010, 2013 and 2016 waves. The content and the purpose of use are described in the following table.  
+
++-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                 |                                                                                                                                                                                                                                                   |                                                                                                                                                                                          |
++=================+===================================================================================================================================================================================================================================================+==========================================================================================================================================================================================+
+| **Name**        | **What does it contain**                                                                                                                                                                                                                          | **What was it used for**                                                                                                                                                                 |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| UPersonas\_#    | **Adult survey data:** demographic variables, social security, habits, fecundity, educational attainment, job status, job history, social capital, savings, migration.                                                                            | To obtain variables related to educational attainment, demographic variables of parents, access to social security for confounding.                                                      |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| UHogar\_#       | **Household related content:** region, shocks, spendings, physical characteristics, access to public services, debts, richness tertile and socioeconomic stratum                                                                                  | To obtain information related to the region in which the household is located, social stratum and richness stratum as variables of interest for the analysis                             |
+|                 |                                                                                                                                                                                                                                                   |                                                                                                                                                                                          |
+|                 |                                                                                                                                                                                                                                                   |                                                                                                                                                                                          |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| UNinos\_#       | **Data related to child development**, the parents, nutrition, education, interaction between kids and their caregivers, migration and results of cognitive and socio-emotional development tests                                                 | To obtain outcomes of interest for the analysis (cognitive and socio-emotional development tests) and variables other variables that could be used as confounders for the analysis       |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| UComunidades\_# | **Access to public services and problems within** **the neighborhood**, reports of insecurity, reports of government help regarding natural disasters, State presence (police), gang/guerrilla or other groups against the law presence.          | To obtain variables associated with neighborhood insecurity for the mediator.                                                                                                            |
++-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+### **Files developed using data from ELCA for the research project**
+
+Within this research, we developed numerous data files with the data obtained from the raw datasets:
+
+#### *Code for wrangled and merged databases*
+
+[thesis/metadata/panel_data/code_cleaning_wrangling/]{.underline}
+
+- code_panel_2016.R
+
+-  code_panel_2013.R
+
+- code_panel_2010.R
+
+-  code_FULL_panel.R
+
+#### *Datasets*
+
+**Codebook for clean data:** thesis/metadata/panel_data/clean_data/codebook_final
+
+[thesis/metadata/panel_data/clean_data/]{.underline}
+
+- panel_2010.R
+
+- short_panel_2010.R
+
+-  panel_2013.R
+
+- short_panel_2013.R
+
+- panel_2016.R
+
+- short_panel_2016.R
+
+- FULL_panel.R
+
+#### *Descriptive data*
+
+[thesis/metadata/data_analysis/descriptives/]{.underline}
+
+- children_descriptives_R
+
+-  community_descriptives.R
+
+-  household_descriptive.R
+
+- missing_data.qmd
+
+- parents_descriptives.R
+
+- model_descriptives.qmd
+
+#### *Data analysis* 
+
+[thesis/metadata/data_analysis/mediation_analysis/]{.underline}
+
+-  FINAL_mediation_analysis.qmd
+
+*All of the files mentioned above are openly accessible for other users to replicate the analysis or carry out other analyses with the processed data.*
+
+### Dataset list 
+
+List of datasets and codes needed to replicate the datasets of interest and analysis
+
++-------------------------------------------------------------+-------------------+---------------+
+|                                                             |                   |               |
++=============================================================+===================+===============+
+| **Data file**                                               | **Source**        | **Provided**  |
+|                                                             |                   |               |
+| **Initial path: [thesis/metadata/panel_data/]{.underline}** |                   |               |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2010/Upersonas2010.tab                       | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2010/UNinosde0a9.RData                       | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2010/UHogar2010.RData                        | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2010/Ucomunidades2010.tab                    | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2013/Upersonas2013.tab                       | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2013/UNinosde0a13.tab                        | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2013/UHogar2013.RData                        | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2013/Ucomunidades2013.RData                  | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2016/Upersonas2016.RData                     | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2016/UNinosde6a16.RData                      | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2016/UHogar2016.RData                        | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| elca_databases/2016/Ucomunidades2016.tab                    | CEDE              | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| code_cleaning_wrangling/code_panel_2010.R                   | Researcher        | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| code_cleaning_wrangling/code_panel_2013.R                   | Researcher        | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| code_cleaning_wrangling/code_panel_2016.R                   | Researcher        | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+| code_FULL_panel.R                                           | Researcher        | Yes           |
++-------------------------------------------------------------+-------------------+---------------+
+
+## Computational requirements
+
+### Software Requirements
+
+The code was last run on R program version 4.5.2. Libraries are loaded into chunks in each code file.  The computer in which the code was run had an AMD Ryzen 7 processor with 16GB of RAM, 954 GB of storage with Windows 11. Computation took \<10 minutes.
+
+## Description of programs/code
+
+-  Databases under panel_data/elca_databases are the raw databases obtained from the CEDE repository
+
+-  Panel data obtained after running codes in panel_data/code_cleaning_wrangling are the result of the merging and wrangling of the data to be according to what was needed for the analysis. The dataset that is used for data analysis is the resulting one from code_FULL_panel.R
+
+- Descriptives were run per subject across the waves (e.g.: children, household) to asses the behavior of the variables across time.
+
+-  Missing data was assessed using basic covariates to assess for patterns in the data without going further due to the illustrative nature of the research. However, a more detailed analysis could be useful for further analysis in the future.
+
+- Before running the model, graphs and descriptives were carried out to assess patterns
+
+- The mediation analysis code has the code for the analysis as well as the diagnostics to assess for the confounder balance and IPW weights.
+
+- Finally, the DAG file includes the figures that were used within the paper to exemplify the causal relationships explained within mediation when working with longitudinal data. Graph follow conceptual knowledge about the variables used within the study, they don’t use the observed data as a source.
+
+## Instructions to Replicators
+
+1.   Databases within the **panel_data/elca_databases** should be downloaded before applying any type of code.
+
+2.   Files in the **panel_data/code_cleaning_wrangling** should be downloaded as well. Only **code_FULL_panel.R** can be run as it runs the source datafiles from the panel data generated for 2010, 2013, and 2016.
+
+3.  *Descriptives files* in **data_analysis/descriptives** for parents, household, community and children can be run to obtain graphs and tables of each of the variables.
+
+4.   *Missing data* in **data_analysis/descriptives** can be run to obtain information about attrition across time and assess trends with general covariates (sex, age, region, socioeconomic stratum)
+
+5.  *Descriptives associated to the model* and assumed relations can be run **data_analysis/descriptives** to see how the data behaves across the exposure, mediator and outcome.
+
+6.  Finally, to run entire mediation analysis with corresponding diagnostic, download and run file under **data_analysis/mediation_analysis/**
+
+## References
+
+Centro de Estudios sobre Desarrollo Económico - CEDE, 2023, "Encuesta Longitudinal Colombiana ELCA 2010", <https://doi.org/10.57924/DPF0M5>, UniAndes, V1
+
+Centro de Estudios sobre Desarrollo Económico - CEDE, 2023, "Encuesta Longitudinal Colombiana ELCA 2013", <https://doi.org/10.57924/DE9LP7>, UniAndes, V1
+
+Centro de Estudios sobre Desarrollo Económico - CEDE, 2023, "Encuesta Longitudinal Colombiana ELCA 2016", <https://doi.org/10.57924/BLUILW>, UniAndes, V1
